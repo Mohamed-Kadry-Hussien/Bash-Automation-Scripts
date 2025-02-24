@@ -1,0 +1,389 @@
+#!/bin/bash
+
+# =======================
+#  COLOR DEFINITIONS
+# =======================
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+# =======================
+#  REPORT DIRECTORY
+# =======================
+REPORT_DIR="$HOME/Desktop/System_Health_Reports"
+mkdir -p "$REPORT_DIR"
+
+# Global variables for the report
+report_file=""
+timestamp=""
+
+
+check_dependencies() {
+    echo -e "${YELLOW}Checking dependencies...${NC}"
+    local missing_deps=()
+
+    # Check for ssmtp
+    if ! command -v ssmtp &> /dev/null; then
+        echo -e "${RED}ssmtp is not installed. It is required for sending emails.${NC}"
+        missing_deps+=("ssmtp")
+    fi
+
+    # Check for vnstat (optional)
+    if ! command -v vnstat &> /dev/null; then
+        echo -e "${YELLOW}vnstat is not installed. It is required for network traffic monitoring.${NC}"
+        missing_deps+=("vnstat")
+    fi
+
+    # Check for mpstat (optional)
+    if ! command -v mpstat &> /dev/null; then
+        echo -e "${YELLOW}mpstat is not installed. It is required for CPU usage per core.${NC}"
+        missing_deps+=("sysstat")
+    fi
+
+    # Install missing dependencies
+    if [[ ${#missing_deps[@]} -gt 0 ]]; then
+        echo -e "${YELLOW}The following dependencies are missing: ${missing_deps[*]}${NC}"
+        read -p "Do you want to install them now? (y/n): " install_choice
+        if [[ "$install_choice" =~ ^[Yy]$ ]]; then
+            sudo apt-get update
+            sudo apt-get install -y "${missing_deps[@]}"
+        else
+            echo -e "${RED}Some features may not work without the required dependencies.${NC}"
+        fi
+    else
+        echo -e "${GREEN}All dependencies are installed.${NC}"
+    fi
+}
+
+
+# =======================
+#  FUNCTION: CHECK CPU
+# =======================
+check_cpu() {
+    echo -e "${YELLOW}Checking CPU Usage...${NC}"
+    
+    cpu_info=$(lscpu)
+    cpu_model=$(echo "$cpu_info" | grep "Model name" | cut -d ':' -f 2 | sed 's/^ *//')
+    cpu_cores=$(echo "$cpu_info" | grep "^CPU(s):" | cut -d ':' -f 2 | sed 's/^ *//')
+    cpu_op_modes=$(echo "$cpu_info" | grep "CPU op-mode(s):" | cut -d ':' -f 2 | sed 's/^ *//')
+    
+    echo -e "${BLUE}CPU Model: ${RED}$cpu_model${NC}"
+    echo -e "${BLUE}CPU Cores: ${RED}$cpu_cores${NC}"
+    echo -e "${BLUE}CPU Op-Mode(s): ${RED}$cpu_op_modes${NC}"
+    
+    cpu_usage=$(top -bn1 | grep "Cpu(s)" | \
+                sed "s/.*, *\([0-9.]*\)%* id.*/\1/" | \
+                awk '{print 100 - $1}')
+    echo -e "${BLUE}Overall CPU Usage: ${RED}$cpu_usage%${NC}"
+    
+    echo -e "${YELLOW}Do you want to see CPU usage per core? (y/n): ${NC}"
+    read -r response
+    if [[ "$response" =~ ^[Yy]$ ]]; then
+        echo -e "${BLUE}CPU Usage per Core:${NC}"
+        mpstat -P ALL 1 1 | awk '/Average:/ && $2 ~ /[0-9]/ {print "Core " $2 ": " 100 - $NF "%"}'
+    fi
+}
+
+# =======================
+#  FUNCTION: CHECK MEMORY
+# =======================
+check_memory() {
+    echo -e "${YELLOW}Checking Memory Usage...${NC}"
+    
+    total_memory=$(free -h | awk '/^Mem:/ {print $2}')
+    used_memory=$(free -h | awk '/^Mem:/ {print $3}')
+    free_memory=$(free -h | awk '/^Mem:/ {print $4}')
+    cache_memory=$(free -h | awk '/^Mem:/ {print $6}')
+    memory_usage_percent=$(free | awk '/^Mem:/ {printf "%.2f%%", ($3/$2)*100}')
+    
+    echo -e "${BLUE}Total Memory: ${RED}$total_memory${NC}"
+    echo -e "${BLUE}Used Memory: ${RED}$used_memory${NC}"
+    echo -e "${BLUE}Free Memory: ${RED}$free_memory${NC}"
+    echo -e "${BLUE}Cache Memory: ${RED}$cache_memory${NC}"
+    echo -e "${BLUE}Memory Usage Percentage: ${RED}$memory_usage_percent${NC}"
+}
+
+# =======================
+#  FUNCTION: CHECK DISK
+# =======================
+check_disk() {
+    echo -e "${YELLOW}Checking Disk Usage...${NC}"
+    
+    echo -e "${BLUE}Disk Usage for All Partitions:${NC}"
+    df -h | awk '{print $1 "\t" $2 "\t" $3 "\t" $4 "\t" $5 "\t" $6}' | column -t
+    
+    root_disk_usage=$(df -h / | awk 'NR==2 {print $5}')
+    echo -e "${BLUE}Root Partition Usage: ${RED}$root_disk_usage${NC}"
+}
+
+# =======================
+#  FUNCTION: CHECK NETWORK
+# =======================
+check_network() {
+    echo -e "${YELLOW}Checking Network Status...${NC}"
+    
+    echo -e "${BLUE}Network Interfaces and IP Addresses:${NC}"
+    ip -br a | awk '{print $1 "\t" $3}'
+    
+    if command -v vnstat &> /dev/null; then
+        active_interface=$(ip -br a | awk '$2 == "UP" {print $1}' | head -n 1)
+        if [[ -z "$active_interface" ]]; then
+            echo -e "${RED}No active network interface found.${NC}"
+        else
+            echo -e "${YELLOW}Active Interface: ${RED}$active_interface${NC}"
+            
+            echo -e "${YELLOW}Do you want to see live network traffic? (y/n): ${NC}"
+            read -r response
+            if [[ "$response" =~ ^[Yy]$ ]]; then
+                echo -e "${YELLOW}Live Network Traffic (for 20 seconds):${NC}"
+                echo -e "${YELLOW}Press any key to stop...${NC}"
+                vnstat -l -i "$active_interface" &
+                vnstat_pid=$!
+                read -t 20 -n 1 -s -r
+                kill "$vnstat_pid" 2>/dev/null
+                echo -e "\n${YELLOW}Live network traffic stopped.${NC}"
+            fi
+            
+            echo -e "${YELLOW}Do you want to see daily network usage? (y/n): ${NC}"
+            read -r response
+            if [[ "$response" =~ ^[Yy]$ ]]; then
+                echo -e "${YELLOW}Daily Network Usage:${NC}"
+                vnstat -d -i "$active_interface"
+            fi
+            
+            echo -e "${YELLOW}Do you want to see monthly network usage? (y/n): ${NC}"
+            read -r response
+            if [[ "$response" =~ ^[Yy]$ ]]; then
+                echo -e "${YELLOW}Monthly Network Usage:${NC}"
+                vnstat -m -i "$active_interface"
+            fi
+        fi
+    else
+        echo -e "${RED}vnstat is not installed. Please install it for network speed details.${NC}"
+    fi
+}
+
+# =======================
+#  FUNCTION: CHECK UPDATES
+# =======================
+check_updates() {
+    echo -e "${YELLOW}Checking Pending Software Updates...${NC}"
+    
+    if command -v apt &> /dev/null; then
+        upgradable_packages=$(apt list --upgradable 2>/dev/null | grep -v "^Listing...")
+        pending_updates=$(echo "$upgradable_packages" | wc -l)
+        echo -e "${BLUE}Pending Updates: ${RED}$pending_updates${NC}"
+        
+        if [[ $pending_updates -gt 0 ]]; then
+            echo -e "${YELLOW}Do you want to see the list of packages to upgrade? (y/n): ${NC}"
+            read -r response
+            if [[ "$response" =~ ^[Yy]$ ]]; then
+                echo -e "${BLUE}Packages to Upgrade:${NC}"
+                echo "$upgradable_packages" | awk -F/ '{print $1}'
+            fi
+        else
+            echo -e "${GREEN}No pending updates. Your system is up to date!${NC}"
+        fi
+    else
+        echo -e "${RED}This system does not use apt (Debian/Ubuntu based).${NC}"
+    fi
+}
+
+# =======================
+#  FUNCTION: CHECK USERS
+# =======================
+check_users() {
+    echo -e "${YELLOW}Checking Active Users...${NC}"
+    
+    active_users=$(who | awk '{print $1}')
+    user_count=$(echo "$active_users" | wc -l)
+    echo -e "${BLUE}Active Users: ${RED}$user_count${NC}"
+    
+    echo -e "${YELLOW}Do you want to see detailed information about active users? (y/n): ${NC}"
+    read -r response
+    if [[ "$response" =~ ^[Yy]$ ]]; then
+        echo -e "${BLUE}Detailed Active Users Information:${NC}"
+        
+        echo -e "${BLUE}Username\tSession Start\tIP Address${NC}"
+        who -u | awk '{print $1 "\t" $3 "\t" $5}' | column -t
+        
+        echo -e "${BLUE}Number of Sessions per User:${NC}"
+        who -u | awk '{print $1}' | sort | uniq -c | \
+            awk '{print $2 " has " $1 " active session(s)"}'
+        
+        echo -e "${BLUE}Current Commands Being Executed:${NC}"
+        ps -eo user,comm --no-headers | sort | uniq | \
+            awk '{print $1 " is running: " $2}'
+    else
+        echo -e "${YELLOW}Skipping detailed information.${NC}"
+    fi
+}
+
+# =======================
+#  FUNCTION: GENERATE REPORT
+# =======================
+generate_report() {
+    echo -e "${YELLOW}Generating Full Report...${NC}"
+    timestamp=$(date +"%Y-%m-%d_%H-%M-%S")
+    report_file="$REPORT_DIR/system_report_$timestamp.txt"
+    
+    {
+        echo "System Health Report - $timestamp"
+        echo "============================================"
+        
+        # CPU Information
+        echo -e "\n=== CPU Information ==="
+        cpu_info=$(lscpu)
+        echo "CPU Model: $(echo "$cpu_info" | grep "Model name" | cut -d ':' -f 2 | sed 's/^ *//')"
+        echo "CPU Cores: $(echo "$cpu_info" | grep "^CPU(s):" | cut -d ':' -f 2 | sed 's/^ *//')"
+        echo "CPU Op-Mode(s): $(echo "$cpu_info" | grep "CPU op-mode(s):" | cut -d ':' -f 2 | sed 's/^ *//')"
+        echo "Overall CPU Usage: $(top -bn1 | grep "Cpu(s)" | sed "s/.*, *\([0-9.]*\)%* id.*/\1/" | awk '{print 100 - $1}')%"
+        
+        # Memory Information
+        echo -e "\n=== Memory Information ==="
+        memory_info=$(free -h)
+        echo "Total Memory: $(echo "$memory_info" | awk '/^Mem:/ {print $2}')"
+        echo "Used Memory: $(echo "$memory_info" | awk '/^Mem:/ {print $3}')"
+        echo "Free Memory: $(echo "$memory_info" | awk '/^Mem:/ {print $4}')"
+        echo "Cache Memory: $(echo "$memory_info" | awk '/^Mem:/ {print $6}')"
+        echo "Memory Usage Percentage: $(free | awk '/^Mem:/ {printf "%.2f%%", ($3/$2)*100}')"
+        
+        # Disk Information
+        echo -e "\n=== Disk Information ==="
+        echo "Disk Usage for All Partitions:"
+        df -h | awk '{print $1 "\t" $2 "\t" $3 "\t" $4 "\t" $5 "\t" $6}' | column -t
+        echo "Root Partition Usage: $(df -h / | awk 'NR==2 {print $5}')"
+        
+        # Network Information
+        echo -e "\n=== Network Information ==="
+        echo "Network Interfaces and IP Addresses:"
+        ip -br a | awk '{print $1 "\t" $3}'
+        
+        # Pending Updates
+        echo -e "\n=== Pending Updates ==="
+        if command -v apt &> /dev/null; then
+            upgradable_packages=$(apt list --upgradable 2>/dev/null | grep -v "^Listing...")
+            pending_updates=$(echo "$upgradable_packages" | wc -l)
+            echo "Pending Updates: $pending_updates"
+            if [[ $pending_updates -gt 0 ]]; then
+                echo "Packages to Upgrade:"
+                echo "$upgradable_packages" | awk -F/ '{print $1}'
+            fi
+        else
+            echo "This system does not use apt (Debian/Ubuntu based)."
+        fi
+        
+        # Active Users
+        echo -e "\n=== Active Users ==="
+        active_users=$(who | awk '{print $1}')
+        user_count=$(echo "$active_users" | wc -l)
+        echo "Active Users: $user_count"
+        echo "List of Active Users:"
+        who | awk '{print $1 "\t" $3 "\t" $5}'
+    } > "$report_file"
+    
+    echo -e "${GREEN}Report generated: ${RED}$report_file${NC}"
+}
+
+# =======================
+#  FUNCTION: SEND EMAIL
+# =======================
+send_email() {
+    echo -e "${YELLOW}Sending Report via Email...${NC}"
+    
+    if [[ -z "$report_file" ]]; then
+        echo -e "${RED}No report found. Please generate a report first (option 7).${NC}"
+        return
+    fi
+    
+    if [[ ! -f "$report_file" ]]; then
+        echo -e "${RED}No report file exists. Please generate a report first.${NC}"
+        return
+    fi
+    check_dependencies
+    
+    read -p "Enter the recipient's email address: " recipient
+    
+    # Must run as root to write /etc/ssmtp/ssmtp.conf
+    if [[ "$(id -u)" -ne 0 ]]; then
+        echo -e "${RED}You must run this script as root (sudo) to update /etc/ssmtp/ssmtp.conf.${NC}"
+        return
+    fi
+    
+    # Hard-coded Gmail credentials
+    # Replaced with the new 16-character App Password:
+    GMAIL_USER="ge6259765@gmail.com"
+    GMAIL_PASS="ymvbkkhtmktjvapb"  # Your new 16-char App Password
+
+    # Write /etc/ssmtp/ssmtp.conf
+    cat <<EOF >/etc/ssmtp/ssmtp.conf
+root=$GMAIL_USER
+mailhub=smtp.gmail.com:587
+AuthUser=$GMAIL_USER
+AuthPass=$GMAIL_PASS
+UseSTARTTLS=YES
+UseTLS=YES
+hostname=$(hostname)
+FromLineOverride=YES
+EOF
+    
+    chmod 600 /etc/ssmtp/ssmtp.conf
+    
+    # Send mail
+    {
+        echo "To: $recipient"
+        echo "From: $GMAIL_USER"
+        echo "Subject: System Health Report - $timestamp"
+        echo ""
+        cat "$report_file"
+    } | ssmtp "$recipient"
+    
+    if [[ $? -eq 0 ]]; then
+        echo -e "${GREEN}Report sent to ${RED}$recipient${NC}"
+    else
+        echo -e "${RED}Failed to send email via ssmtp. Possible reasons:${NC}"
+        echo -e "${RED}- Incorrect App Password${NC}"
+        echo -e "${RED}- Gmail blocking 'less secure apps' (App Password is recommended)${NC}"
+        echo -e "${RED}- Check your Google Account security settings${NC}"
+    fi
+}
+
+# =======================
+#  MAIN MENU LOOP
+# =======================
+while true; do
+    clear
+    echo -e "${GREEN}============================================${NC}"
+    echo -e "${GREEN}         System Health Checker              ${NC}"
+    echo -e "${GREEN}============================================${NC}"
+    echo -e "${BLUE}1. Check CPU Usage${NC}"
+    echo -e "${BLUE}2. Check Memory Usage${NC}"
+    echo -e "${BLUE}3. Check Disk Usage${NC}"
+    echo -e "${BLUE}4. Check Network Status${NC}"
+    echo -e "${BLUE}5. Check Pending Software Updates${NC}"
+    echo -e "${BLUE}6. Check Active Users${NC}"
+    echo -e "${BLUE}7. Generate Full Report${NC}"
+    echo -e "${BLUE}8. Send Report via Email${NC}"
+    echo -e "${RED}9. Exit${NC}"
+    echo -e "${GREEN}============================================${NC}"
+    
+    read -p "Choose an option (1-9): " choice
+    case $choice in
+        1) check_cpu ;;
+        2) check_memory ;;
+        3) check_disk ;;
+        4) check_network ;;
+        5) check_updates ;;
+        6) check_users ;;
+        7) generate_report ;;
+        8) send_email ;;
+        9) echo -e "${RED}Exiting...${NC}"; break ;;
+        *) echo -e "${RED}Invalid option. Please choose 1-9.${NC}" ;;
+    esac
+    
+    echo -e "${YELLOW}Press Enter to continue...${NC}"
+    read -r
+done
+
