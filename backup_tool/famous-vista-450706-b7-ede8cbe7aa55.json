@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "famous-vista-450706-b7",
+  "private_key_id": "ede8cbe7aa555c1c57e3abf869f8f77d4fe3f17e",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCqfRfCs5trAtxu\n8jnDfYhViDJgIamgHlhQdZuvDLmOn2fgyA7TL+mT/3MO1UtUZOfpSaaG3NROJiFU\nhXWhCjG2zGMXsXZyi1w0vUr7R4PtWCjR9g6y7n7nnlmW+S58UtYD/uq8C8fXysTI\nvBI1aRUXwalV2qEmcO4GrHzNzMHCY2TQ0AUFjUBsGimF5KKhKful/QQmxpfWFjn5\nSGoF0S1gpnNqehtiBMPdjkRhTjy6CFFEPheTO0VC/FhXlYuyYT4JTCDQ04iO0EGJ\n7n1UGXZLifRQjBC9o9OQ1gYe6Ovnf0sAdEm/kc2GWIev30mzd1JesRnH7ZNlS1/W\nzWRvBTa1AgMBAAECggEAAUF+IxBFIQ7qlkOhAsxiLHUeH+CnmfcXQfJ31NyEYmVQ\ns9Jtb4dPEmjDjXSrQyIiJjEFccFfK/sybCe2g9rqHlVXloVXYMUfhwDs9Dhk46Lu\nXAuStKU2mJitQsQvoDlQ+8MNMhjpHjEPbYYbITsWrW/fAjOj079ptXFgUvjC5Z5o\nNH77kmzuMS8WQa0TK6VVgabT5GUwe+Emok2ICCY1OPEVRz/N7tP20yfkeBp+nCIp\nPopyyd0zJaBzwI7knWdEwyjfJipUUzcPTcue9Ux3tMq6MPUq7rEsqQ5ZHcOhxKXh\nZQA7+My+QG7X76ryInAObGDniKjTmYtKHi0k9lSvSQKBgQDv5CXFPzNZSVKTgy+/\nXs4ernNsOWqI79DydwV28pnAb2GZu2MOVLOODdOWqfJiymqh0th/AYQsRR7cTAkm\nMaWkFRfF42qEalbkGBgubnUzCkUmhWjnG5XUlCxHqfS3UDTbM0ab/e3SpPv37Bny\nUNZwetH0kUObC5IiYzwgDOGLDQKBgQC17+E7LvNcZywbxUggQjlQLmDevGWI9qNm\nSlw56AC9mb2kFJkCYDr9RXjbDwJiJ2sbYi5nN/gNjLomy3Ay97abtyZFbkiKaoi7\nyAzLSzuG3NAl22LbOUPERGGITqQdHA0IUwJ5Xygg99lAFPf08dbp4QvehI8Nf5Da\nCgg+siLQSQKBgQCumNvQsw4Zdx9N09Zlr4fPluLVKvjaD8mBH5VvnGTBRY/Axzzy\nSj2hL3kHmEudEXwIqZ/+2Eitu+UZK5IhJVNMmDmEQt/c3lS9kLfQ234blub7gW/3\nfQFRBkMwKYe9//dobup+UJPOk1v8du/viFx64zl6ilutNf+3XYh+P0HM5QKBgCND\nEOZFnUlFfdkMDYSjETSnKINDBHLdSqIiu2lFvA8DYywQCe/Z8tTvyBK8//tCJJI0\nH0ZGJL+LjPDD8UUPmcboYnSGgWzCZSnwBfrI5AqpdXZA5RIUMTwy/KxMgaZar3Pz\nksEvXjm1j9fJuJ0y2jKOOZyxGIDHPq3jz+FG6VRxAoGAPzoSraWzu5xhk+AwLDZj\nsJC6LlszykIVXrNnowtxLCrRn4+tAkzoTt5jzT5cM3i3X1SVAXmSu0lyLDmJQYBU\n78IPnMTKDe6IQFXvH63luL9PKJqz0GKocpSAB6BoPEuHFYrR83QLN1XjKT0Lkegg\nE6P5DSGZjQSi4gEqOucUcl0=\n-----END PRIVATE KEY-----\n",
+  "client_email": "backupserviceaccount@famous-vista-450706-b7.iam.gserviceaccount.com",
+  "client_id": "103381530405528017664",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/backupserviceaccount%40famous-vista-450706-b7.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

@@ -1,0 +1,1 @@
+the second file is a key that must be with the script in the same dir 
