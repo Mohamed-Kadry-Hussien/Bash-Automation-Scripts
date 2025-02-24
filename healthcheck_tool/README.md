@@ -1,6 +1,6 @@
 # 🖥️ System Health Checker Script
 
-![Bash](https://img.shields.io/badge/Language-Bash-green) ![License](https://img.shields.io/badge/License-MIT-blue) ![Platform](https://img.shields.io/badge/Platform-Linux-lightgrey)
+![Bash](https://img.shields.io/badge/Language-Bash-green)  ![Platform](https://img.shields.io/badge/Platform-Linux-lightgrey)
 
 The **System Health Checker Script** is a powerful and user-friendly Bash script designed to monitor and report the health status of your Linux system. It provides detailed insights into CPU usage, memory consumption, disk space, network activity, pending software updates, and active users. Additionally, it can generate comprehensive reports and send them via email for remote monitoring.
 
